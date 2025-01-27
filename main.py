@@ -6,18 +6,19 @@ from utils.db_pool import DatabasePool
 from utils.scheduler import TaskScheduler
 from utils.data_fetcher import fetch_migrated_coins, update_market_data
 from utils.sentiment_analyzer import analyze_sentiment
+from utils.log_util import setup_logging as setup_log
 
 def setup_logging():
-    logging.basicConfig(
-        level=logging.INFO,
-        format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
-    )
-    return logging.getLogger(__name__)
+    return setup_log(__name__)
 
 def init_database():
-    db = DatabasePool()
-    db.create_all_tables()
-    logging.info("Database initialized")
+    try:
+        db = DatabasePool()
+        db.create_all_tables()
+        logging.info("Database initialized successfully")
+    except Exception as e:
+        logging.error(f"Failed to initialize database: {e}")
+        raise
 
 def run_scheduler(duration=None):
     """Run the scheduler for a specified duration (in minutes) or indefinitely"""

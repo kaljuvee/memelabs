@@ -1,6 +1,6 @@
 from sqlalchemy import Column, Integer, String, Float, DateTime, ForeignKey, Index, Boolean, Text
 from utils.db_pool import DatabasePool
-from utils.logging import setup_logging
+from utils.log_util import setup_logging
 import datetime
 
 Base = DatabasePool.Base

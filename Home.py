@@ -11,7 +11,7 @@ import plotly.express as px
 
 # Initialize database and logger
 db_pool = DatabasePool()
-logger = setup_logging(__name__, db_session_maker=db_pool.SessionLocal)
+logger = setup_logging(__name__, db_session_maker=db_pool.get_session)
 
 # Initialize scheduler
 scheduler = TaskScheduler()
@@ -27,6 +27,36 @@ time_range = st.sidebar.selectbox(
     "Select Time Range",
     ["Last 24 Hours", "Last Week", "Last Month", "All Time"]
 )
+
+# Add Configuration Section
+st.sidebar.header("Configuration")
+with st.sidebar.expander("API Keys & Credentials"):
+    pumpfun_api_key = st.text_input("PumpFun API Key", type="password")
+    tweetscout_api_key = st.text_input("TweetScout API Key", type="password")
+    rugcheck_api_key = st.text_input("RugCheck API Key", type="password")
+    
+    st.divider()
+    st.subheader("Telegram Configuration")
+    telegram_bot_token = st.text_input("Telegram Bot Token", type="password")
+    telegram_user_chat_id = st.text_input("Telegram User Chat ID", type="password")
+    telegram_bot_username = st.text_input("Telegram Bot Username", value="BonkBot")
+    
+    if st.button("Save Configuration"):
+        try:
+            # Update .env file
+            with open('.env', 'w') as f:
+                f.write(f"PUMPFUN_API_KEY='{pumpfun_api_key}'\n")
+                f.write(f"TWEETSCOUT_API_KEY='{tweetscout_api_key}'\n")
+                f.write(f"RUGCHECK_API_KEY='{rugcheck_api_key}'\n\n")
+                f.write("# Telegram Configuration\n")
+                f.write(f"TELEGRAM_BOT_TOKEN='{telegram_bot_token}'\n")
+                f.write(f"TELEGRAM_USER_CHAT_ID='{telegram_user_chat_id}'\n")
+                f.write(f"TELEGRAM_BONKBOT_USERNAME='{telegram_bot_username}'\n")
+            st.success("Configuration saved successfully!")
+            logger.info("Configuration updated successfully")
+        except Exception as e:
+            st.error("Failed to save configuration!")
+            logger.error(f"Failed to update configuration: {str(e)}", exc_info=True)
 
 # Task Control Section in Sidebar
 st.sidebar.header("Task Controls")

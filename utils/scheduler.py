@@ -18,6 +18,9 @@ class TaskScheduler:
             'migrations': None
         }
 
+    def is_running(self):
+        return self._running
+
     def start(self):
         if not self._running:
             self._running = True

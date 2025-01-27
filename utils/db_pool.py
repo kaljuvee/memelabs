@@ -1,34 +1,71 @@
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker, scoped_session
+from sqlalchemy.ext.declarative import declarative_base
 from dotenv import load_dotenv
+from utils.log_util import setup_logging
 import os
-import streamlit as st
 
 # Load environment variables
 load_dotenv()
 
-def get_database_url():
-    """Get database URL based on environment selection"""
-    env = getattr(st.session_state, 'db_environment', 'LIVE')  # Default to LIVE if not set
-    if env == 'LIVE':
-        return os.getenv('LIVE_DB_URL')
-    return os.getenv('DEV_DB_URL')
+# Create declarative base
+Base = declarative_base()
 
-# Create engine with dynamic DATABASE_URL
-def create_db_engine():
-    DATABASE_URL = get_database_url()
-    return create_engine(DATABASE_URL, pool_size=5, max_overflow=10)
+class DatabasePool:
+    _instance = None
+    _engine = None
+    _Session = None
+    _logger = None
+    Base = Base  # Add Base as a class attribute
 
-# Create session factory with dynamic engine
-engine = create_db_engine()
-session_factory = sessionmaker(bind=engine)
+    def __new__(cls):
+        if cls._instance is None:
+            cls._instance = super(DatabasePool, cls).__new__(cls)
+            cls._instance._logger = setup_logging(__name__)
+        return cls._instance
 
-# Create thread-safe session
-Session = scoped_session(session_factory)
+    def __init__(self):
+        if not self._engine:
+            self._initialize_engine()
+
+    def _initialize_engine(self):
+        """Initialize database engine with URL from environment variables"""
+        database_url = os.getenv('DB_URL')
+        if not database_url:
+            raise ValueError("DB_URL environment variable is not set")
+        
+        self._engine = create_engine(
+            database_url,
+            pool_size=5,
+            max_overflow=10
+        )
+        self._Session = scoped_session(sessionmaker(bind=self._engine))
+        self._logger.info("Database engine initialized")
+
+    def get_session(self):
+        """Get a new database session"""
+        if not self._Session:
+            self._initialize_engine()
+        return self._Session()
+
+    def create_all_tables(self):
+        """Create all tables in the database"""
+        Base.metadata.create_all(self._engine)
+        self._logger.info("Database tables created")
+
+    @property
+    def engine(self):
+        """Get the SQLAlchemy engine"""
+        if not self._engine:
+            self._initialize_engine()
+        return self._engine
+
+# Global instance for convenience
+db_pool = DatabasePool()
 
 def get_db():
     """Get a new database session"""
-    db = Session()
+    db = db_pool.get_session()
     try:
         yield db
     finally:
